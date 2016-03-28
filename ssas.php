@@ -17,13 +17,12 @@ class ssas {
 
     function createUser($username, $password){
 
-        $options = [
-            'salt' => mcrypt_create_iv(22, MCRYPT_DEV_URANDOM)
-        ];
+	$salt = base64_encode(mcrypt_create_iv(22,MCRYPT_DEV_URANDOM));
+        $options = ['salt' => $salt];
         $ench_password = password_hash($password, PASSWORD_BCRYPT, $options);
 
         if ($query = self::$mysqli -> prepare('INSERT INTO user(username,password,salt) VALUES (?,?,?)')){
-            $query -> bind_param('sss', $username,$ench_password,$options['salt']);
+            $query -> bind_param('sss', $username,$ench_password,$salt);
             $query -> execute();
         }
 
@@ -42,27 +41,25 @@ class ssas {
         }
 
         if(isset($salt)){
-
-            $options = [
-                'salt' => $salt
-            ];
-
-            $hash = password_has($password, PASSWORD_BCRYPT, $options);
+            $options = ['salt' => $salt];
+            $hash = password_hash($password, PASSWORD_BCRYPT, $options);
 
             if($query = self::$mysqli -> prepare('SELECT id FROM user WHERE username = ? AND password = ?')){
                 $query -> bind_param('ss', $username, $hash);
                 $query -> execute();
                 $query -> store_result();
-                $query -> bind_result($uid);
+		if($query -> num_rows > 0){
+			$query -> bind_result($uid);
+		}
                 $query -> fetch();
             }
 
             if(isset($uid)){
                 self::$uid = $uid;
-                return true;
+                return "ok";
             }
         }
-        return false;
+        return "error";
     }
 }
 ?>
