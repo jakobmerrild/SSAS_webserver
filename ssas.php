@@ -47,11 +47,11 @@ class ssas {
     }
 
     function getUid(){
-        if(self::isUserLoggedIn) return $data['uid'];
+        if(self::isUserLoggedIn()) return $data['uid'];
     }
 
     function getUsername(){
-        if(self::isUserLoggedIn) return $data['username'];
+        if(self::isUserLoggedIn()) return $data['username'];
     }
 
     function createUser($username, $password){
