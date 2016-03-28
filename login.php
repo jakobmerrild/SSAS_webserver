@@ -2,9 +2,18 @@
 ini_set('display_errors', 1);
 error_reporting(~0);
 require_once("ssas.php");
-if(!empty($_POST)){
-	$ssas = new ssas;
-	$ssas -> createUser($_POST["username"],$_POST["password"]);
+
+$ssas = new ssas;
+if($ssas -> isUserLoggedIn()){
+	header('Location: index.php');
+	die();
+}
+else if(!empty($_POST)){
+	$loginSuccessful = $ssas -> login($_POST["username"],$_POST["password"]);
+	if($loginSuccessful){
+		header('Location: index.php');
+		die();
+	}
 }
 ?>
 <html>
@@ -27,7 +36,12 @@ if(!empty($_POST)){
 			<label for="password">Password:</label>
 			<input type="password" class="form-control" id="password">
 		  </div>
-		  <button type="submit" class="btn btn-default">Register</button>
+		  <button type="submit" class="btn btn-default">Log in</button>
 		</form>
+		<?php
+			if(isset($loginSuccessful) && !$loginSuccessful){
+				echo '<span class="error-msg">Wrong username or password.</span>'
+			}
+		?>
 	</body>
 </html>
