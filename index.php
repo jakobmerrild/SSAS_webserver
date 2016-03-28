@@ -5,6 +5,8 @@ require_once("ssas.php");
 
 $ssas = new ssas;
 $ssas -> createUser("Jacob","1234");
+echo '</br>';
+echo $ssas -> login("Jacob","1234");
 
 ?>
 
