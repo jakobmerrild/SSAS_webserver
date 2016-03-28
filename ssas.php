@@ -1,5 +1,6 @@
 <?php
 
+use \Firebase\JWT\JWT;
 
 class ssas {
 
@@ -9,35 +10,19 @@ class ssas {
     private static $mysqlDb = 'ssas';
     private static $mysqli;
     private static $uid;
-
+    private static $key = "secret";
 
     function ssas(){
         self::$mysqli = new mysqli(self::$mysqlServer,self::$mysqlUser,self::$mysqlPass,self::$mysqlDb);
     }
 
     function authenticate(){
-	if(isset($_COOKIE['uid']) && isset($_COOKIE['token'])){
-		$uid = $_COOKIE['uid'];
-		$token = $_COOKIE['token'];
-
-		if($query = self::$mysqli -> prepare('SELECT password FROM user WHERE id = ?')){
-		    $query -> bind_param('s', $uid);
-		    $query -> execute();
-		    $query -> store_result();
-
-		    //If there is a result then there is a salt
-		    if($query -> num_rows > 0){
-			$query -> bind_result($hash);
-			$query -> fetch();
-			
-			if(crypt($uid,$hash) == $token){
-				self::$uid = $uid;
-				return true;
-			}
-		    }
-		}
-	}
-	return false;
+        if(isset($_COOKIE['token'])){
+            $token = $_COOKIE['token'];
+            $decoded = JWT::decode($token,$key,array('HS256')); //will throw exception!
+            self::$uid = $uid;
+            return true;
+        }
     }
 
     function isUserLoggedIn(){
@@ -82,11 +67,11 @@ class ssas {
 
         //If a salt is set then we continue
         if(isset($hash) && password_verify($password,$hash)){
-		$token = crypt($uid,$hash);
-		setcookie("uid", $uid, time() + 3600);
-		setcookie("token", $token, time() + 3600);
-                return true;
-	}
+            $jwt = JWT::encode($uid, self::$key);
+            setcookie("token", $jwt, time() + 3600);
+
+            return true;
+        }
 
         return false; 
     }
