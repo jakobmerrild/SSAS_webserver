@@ -15,6 +15,10 @@ class ssas {
         self::$mysqli = new mysqli(self::$mysqlServer,self::$mysqlUser,self::$mysqlPass,self::$mysqlDb);
     }
 
+    function isUserLoggedIn(){
+        return isset(self::$uid);
+    }
+
     function createUser($username, $password){
 
         //Generates salt in base64 and password hash
