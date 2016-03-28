@@ -1,6 +1,6 @@
 <?php
 require_once('vendor/autoload.php');
-
+use \Firebase\JWT\JWT;
 class ssas {
 
     private static $mysqlServer = 'localhost';
@@ -8,8 +8,8 @@ class ssas {
     private static $mysqlPass = '';
     private static $mysqlDb = 'ssas';
     private static $mysqli;
-    private static $uid;
     private static $key = "secret";
+    private static $data;
 
     function ssas(){
         self::$mysqli = new mysqli(self::$mysqlServer,self::$mysqlUser,self::$mysqlPass,self::$mysqlDb);
@@ -18,28 +18,31 @@ class ssas {
     function authenticate(){
         if(isset($_COOKIE['token'])){
             try{
-
                 $token = $_COOKIE['token'];
-                $data = (array) JWT::decode($token,$key,array('HS512')); //will throw exception!
-                self::$uid = $data['data']['uid'];
-                return true;
-
+                $data = (array) JWT::decode($token,self::$key,array('HS512')); //will throw exception!
+		self::$data = (array) $data['data'];
+                return true; 
             } catch (Exception $e){
-
-                unset($_COOKIE['key']);
-                setcookie('token', '', time() - 3600);
-                return false;
-
+                self::logout();
             }
+	    return false;
+        }
+    }
+
+    function logout(){
+        if(isset($_COOKIE['token'])){
+	    unset($_COOKIE['token']);
+            setcookie('token', '', time() - 3600);
         }
     }
 
     function isUserLoggedIn(){
-        return isset(self::$uid);
+	if(!isset(self::$data) && isset($_COOKIE['token'])) self::authenticate();
+	return isset(self::$data);
     }
 
     function getUid(){
-        if(isset(self::$uid)) return self::$uid;
+       if(isset(self::$data)) return $data['uid'];
     }
 
     function createUser($username, $password){
@@ -49,8 +52,8 @@ class ssas {
         $ench_password = password_hash($password, PASSWORD_BCRYPT, ['salt' => $salt ]);
 
         //Insert user into database
-        if ($query = self::$mysqli -> prepare('INSERT INTO user(username,password,salt) VALUES (?,?,?)')){
-            $query -> bind_param('sss', $username,$ench_password,"");
+        if ($query = self::$mysqli -> prepare('INSERT INTO user(username,password) VALUES (?,?)')){
+            $query -> bind_param('ss', $username,$ench_password);
             $query -> execute();
 
             //If exactly one row was affacted then we know that the user was inserted.
@@ -60,7 +63,6 @@ class ssas {
     }
 
     function login($username, $password){
-
         //Query to get the user salt
         if($query = self::$mysqli -> prepare('SELECT id,password FROM user WHERE username = ?')){
             $query -> bind_param('s', $username);
@@ -76,14 +78,11 @@ class ssas {
 
         //If a salt is set then we continue
         if(isset($hash) && password_verify($password,$hash)){
-
-
-            $tokenId = base64_encode(mcrypt_create_iv(32));
+            $tokenId = base64_encode(mcrypt_create_iv(32,MCRYPT_DEV_URANDOM));
             $issuedAt = time();
             $notBefore = $issuedAt;
             $expire = $notBefore + 3600;
-            $serverName = $config -> get('serverName');
-
+            $serverName = $SERVER['SERVER_NAME'];
             $data = [
                 'iat' => $issuedAt,
                 'jti' => $tokenId,
@@ -96,17 +95,10 @@ class ssas {
                 ]
             ];
 
-            $jwt = JWT::encode(
-                $data,
-                $key,
-                'HS512'
-            );
-
+            $jwt = JWT::encode($data,self::$key,'HS512');
             setcookie("token", $jwt, -1);
-
             return true;
         }
-
         return false; 
     }
 
