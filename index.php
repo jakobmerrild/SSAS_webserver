@@ -3,10 +3,12 @@
 ini_set('display_errors', 1);
 error_reporting(~0);
 require_once("ssas.php");
+$ssas = new ssas();
+$ssas -> authenticate();
 ?>
 
 <?php include 'header.php'; ?>
-<?php if(!$ssas -> isUserLoggedIn()){ ?>
+<?php if($ssas -> isUserLoggedIn()){ ?>
 
     <h1>Hello, world!</h1>
     <p>You are logged in!</p>
@@ -14,7 +16,7 @@ require_once("ssas.php");
 <?php } else { ?>
 
     <h1>Hello, world!</h1>
-    <a href="login.php>Login</a>
+    <a href="login.php">Login</a>
 
 <?php } ?>
 <?php include 'footer.php'; ?>

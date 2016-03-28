@@ -6,10 +6,12 @@ error_reporting(~0);
 //Getting ssas class
 require_once("ssas.php");
 $ssas = new ssas();
+$ssas -> authenticate();
 
 //If a POST occured, try to authenticate
 if(isset($_POST['username']) && isset($_POST['password'])){
     $result = $ssas -> login($_POST['username'],$_POST['password']);
+    if($result) header("Location: login.php"); //Bugfix, otherwise the reditect to index is without cookies (for some reason!)
 }
 
 //If the user is already logged in, redirect to index.php
