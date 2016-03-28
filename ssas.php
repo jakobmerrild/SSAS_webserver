@@ -1,6 +1,5 @@
 <?php
-
-use \Firebase\JWT\JWT;
+require_once('vendor/autoload.php');
 
 class ssas {
 
@@ -19,12 +18,18 @@ class ssas {
     function authenticate(){
         if(isset($_COOKIE['token'])){
             try{
+
                 $token = $_COOKIE['token'];
-                $decoded = JWT::decode($token,$key,array('HS256')); //will throw exception!
-                self::$uid = $uid;
+                $data = (array) JWT::decode($token,$key,array('HS512')); //will throw exception!
+                self::$uid = $data['data']['uid'];
                 return true;
+
             } catch (Exception $e){
+
+                unset($_COOKIE['key']);
+                setcookie('token', '', time() - 3600);
                 return false;
+
             }
         }
     }
@@ -71,8 +76,33 @@ class ssas {
 
         //If a salt is set then we continue
         if(isset($hash) && password_verify($password,$hash)){
-            $jwt = JWT::encode($uid, self::$key);
-            setcookie("token", $jwt, time() + 3600);
+
+
+            $tokenId = base64_encode(mcrypt_create_iv(32));
+            $issuedAt = time();
+            $notBefore = $issuedAt;
+            $expire = $notBefore + 3600;
+            $serverName = $config -> get('serverName');
+
+            $data = [
+                'iat' => $issuedAt,
+                'jti' => $tokenId,
+                'iss' => $serverName,
+                'nbf' => $notBefore,
+                'exp' => $expire,
+                'data' => [
+                    'uid' => $uid,
+                    'username' => $username
+                ]
+            ];
+
+            $jwt = JWT::encode(
+                $data,
+                $key,
+                'HS512'
+            );
+
+            setcookie("token", $jwt, -1);
 
             return true;
         }
