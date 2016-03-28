@@ -33,10 +33,3 @@ CREATE TABLE post(
     FOREIGN KEY fk_user (user_id) REFERENCES user(id) ON DELETE CASCADE,
     FOREIGN KEY fk_image (image_id) REFERENCES image(id) ON DELETE CASCADE
 ) engine='innodb';
-
-
--- SELECT * FROM image
--- INNER JOIN shared_image
--- ON image_id = id
--- WHERE uid = user_id OR uid = owner_id
-
