@@ -18,42 +18,53 @@ class ssas {
     function authenticate(){
         if(isset($_COOKIE['token'])){
             try{
+                //Retrives the JWT token from the cookie
                 $token = $_COOKIE['token'];
-                $data = (array) JWT::decode($token,self::$key,array('HS512')); //will throw exception!
-		self::$data = (array) $data['data'];
-                return true; 
+
+                //Decrypts the token. This call will throw an exception if the token is invalid
+                $token = (array) JWT::decode($token,self::$key,array('HS512'));
+
+                //Extracts the user data from the token
+                self::$data = (array) $token['data'];
+                return true;
             } catch (Exception $e){
                 self::logout();
             }
-	    return false;
+            return false;
         }
     }
 
     function logout(){
         if(isset($_COOKIE['token'])){
-	    unset($_COOKIE['token']);
+            unset($_COOKIE['token']);
             setcookie('token', '', time() - 3600);
         }
     }
 
     function isUserLoggedIn(){
-	if(!isset(self::$data) && isset($_COOKIE['token'])) self::authenticate();
-	return isset(self::$data);
+        if(!isset(self::$data) && isset($_COOKIE['token'])) self::authenticate();
+        return isset(self::$data);
     }
 
     function getUid(){
-       if(isset(self::$data)) return $data['uid'];
+        if(self::isUserLoggedIn) return $data['uid'];
+    }
+
+    function getUsername(){
+        if(self::isUserLoggedIn) return $data['username'];
     }
 
     function createUser($username, $password){
 
-        //Generates salt in base64 and password hash
+        //Generates salt
         $salt = mcrypt_create_iv(22,MCRYPT_DEV_URANDOM);
-        $ench_password = password_hash($password, PASSWORD_BCRYPT, ['salt' => $salt ]);
 
-        //Insert user into database
+        //Hashes password. The returned string contains both password hash and salt
+        $hash = password_hash($password, PASSWORD_BCRYPT, ['salt' => $salt ]);
+
+        //Inserts username and password hash into the database
         if ($query = self::$mysqli -> prepare('INSERT INTO user(username,password) VALUES (?,?)')){
-            $query -> bind_param('ss', $username,$ench_password);
+            $query -> bind_param('ss', $username,$hash);
             $query -> execute();
 
             //If exactly one row was affacted then we know that the user was inserted.
@@ -76,12 +87,13 @@ class ssas {
             }
         }
 
-        //If a salt is set then we continue
+        //If password and hash matches then we continue
         if(isset($hash) && password_verify($password,$hash)){
+            //Generates random tokenid
             $tokenId = base64_encode(mcrypt_create_iv(32,MCRYPT_DEV_URANDOM));
-            $issuedAt = time();
-            $notBefore = $issuedAt;
-            $expire = $notBefore + 3600;
+            $issuedAt = time(); //time of issue
+            $notBefore = $issuedAt; //can be used to say that a token is not valid before a given time (not used)
+            $expire = $notBefore + 3600; //token expire data
             $serverName = $SERVER['SERVER_NAME'];
             $data = [
                 'iat' => $issuedAt,
@@ -95,11 +107,15 @@ class ssas {
                 ]
             ];
 
+            //Computes the encrypted token (TODO, maybe change mechanism to RSA?)
             $jwt = JWT::encode($data,self::$key,'HS512');
+
+            //Sets to cookie to never expire as the token itself contains the expiration date (Mimimum exposure)
             setcookie("token", $jwt, -1);
+
             return true;
         }
-        return false; 
+        return false;
     }
 
 
