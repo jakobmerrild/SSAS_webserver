@@ -32,6 +32,14 @@ class ssas {
         echo "username: " . $username;
     }
 
+    function uploadImage($img)
+    {
+	    if($query = self::$mysqli -> prepare('INSERT INTO image(owner_id, image) VALUES(?,?)')){
+	    	$query -> bind_param('is', $uid, $img);
+		$query -> exercute();
+	    }
+    }
+
     function shareImage($iid, $sid)
     {
 	$owner_id;
@@ -54,8 +62,74 @@ class ssas {
 	}
     }
 
+
+    function getImage($iid)
+    {
+	if(verifyShare($uid, $iid))
+	{
+	    if($query = self::$mysqli -> prepare('SELECT image WHERE id = ?')){
+		$query -> bind_param('i', $iid);
+		$query -> execute();
+		$query -> store_result();
+		$query -> bind_result($img);
+		$query -> fetch();
+	    }
+	}
+
+	//TODO: Return image
+	return $img;
+    }
+
+    function getImages()
+    {
+	$imgs;
+
+	//TODO: Shared images
+	if($query = self::$mysqli -> prepare('SELECT * FROM image WHERE owner_id = ?')){
+            $query -> bind_param('i', $uid);
+            $query -> execute();
+            $query -> store_result();
+            $query -> bind_result($imgs);
+	    $query -> fetch();
+	}
+
+	//Return images
+	return $imgs;
+    }
+
     function comment($iid, $comment)
     {
+	if(verifyShare($uid, $iid))
+	{
+	    if($query = self::$mysqli -> prepare('INSERT INTO post(text, user_id, image_id) VALUES (?,?,?)')){
+		$query -> bind_param('sii', $comment, $uid, $iid);
+		$query -> execute();
+	    }
+	}
+	 
+    }
+    
+    function getComments($iid)
+    {
+	$comments;
+
+	if(verifyShare($uid, $iid))
+	{
+	    if($query = self::$mysqli -> prepare('SELECT * FROM post WHERE image_id = ?')){
+                $query -> bind_param('i', $iid);
+		$query -> exercute();
+		$query -> store_result();
+		$query -> bind_result($comments);
+		$query -> fetch();
+	    }
+	}
+
+	return $comments;
+    }
+
+    function verifyShare($user, $image)
+    {
+
 	$count;
 
 	if($query = self::$mysqli -> prepare('SELECT COUNT FROM shared_image WHERE user_id = ? AND image_id = ?')){
@@ -66,16 +140,9 @@ class ssas {
             $query -> fetch();
 	}
 
-	//TODO: Better error handling
-	if($count > 0)
-	{
-	    if($query = self::$mysqli -> prepare('INSERT INTO post(text, user_id, image_id) VALUES (?,?,?)')){
-		$query -> bind_param('sii', $comment, $uid, $iid);
-		$query -> execute();
-	    }
-	}
-	 
+	return count > 0;
     }
+
 
 
 }
