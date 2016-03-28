@@ -18,10 +18,14 @@ class ssas {
 
     function authenticate(){
         if(isset($_COOKIE['token'])){
-            $token = $_COOKIE['token'];
-            $decoded = JWT::decode($token,$key,array('HS256')); //will throw exception!
-            self::$uid = $uid;
-            return true;
+            try{
+                $token = $_COOKIE['token'];
+                $decoded = JWT::decode($token,$key,array('HS256')); //will throw exception!
+                self::$uid = $uid;
+                return true;
+            } catch (Exception $e){
+                return false;
+            }
         }
     }
 
