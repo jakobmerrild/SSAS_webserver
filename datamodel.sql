@@ -12,7 +12,8 @@ CREATE TABLE user(
 CREATE TABLE image(
     id INT AUTO_INCREMENT,
     owner_id INT NOT NULL,
-    image TEXT NOT NULL,
+    image MEDIUMTEXT NOT NULL,
+    createdDate DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (id)
 ) engine='innodb';
 
@@ -29,6 +30,7 @@ CREATE TABLE post(
     text TEXT NOT NULL,
     user_id INT NOT NULL,
     image_id INT NOT NULL,
+    createdDate DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
     FOREIGN KEY fk_user (user_id) REFERENCES user(id) ON DELETE CASCADE,
     FOREIGN KEY fk_image (image_id) REFERENCES image(id) ON DELETE CASCADE
