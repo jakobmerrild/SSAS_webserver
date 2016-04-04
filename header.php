@@ -42,7 +42,7 @@ $ssas -> authenticate();
                         </li>
 
                         <form class="form-inline pull-xs-right hidden-sm-down" action="upload.php" method="post" enctype="multipart/form-data">
-                            <input id="image-inline" type="file" class="form-control" name="image" onchange="update_filename('image-inline','filename-inline')" >
+                            <input id="image-inline" type="file" class="form-control" name="image" accept="image/*" required onchange="update_filename('image-inline','filename-inline')" >
                             <div class="form-group has-primary">
                                 <div class="input-group">
                                     <span class="input-group-btn">
@@ -51,7 +51,7 @@ $ssas -> authenticate();
                                             <i class="fa fa-file-image-o"></i>
                                         </button>
                                     </span>
-                                    <input id="filename-inline" type="text" class="form-control form-control-primary" placeholder="Select file">
+                                    <input id="filename-inline" type="text" required class="form-control form-control-primary" placeholder="Select file">
                                     <span class="input-group-btn">
                                         <button type="submit" class="btn btn-primary-outline">Upload</button>
                                     </span>

@@ -115,7 +115,7 @@ if(isset($_POST['remove_share'])){ $share_result = $ssas -> removeShare($image -
 <?php } ?>
         <form method="post" action="image.php?id=<?php echo $image -> getId(); ?>">
                 <fieldset class="form-group">
-                    <textarea name="comment" class="form-control" rows="3" placeholder="Write a comment"></textarea>
+                    <textarea name="comment" class="form-control" rows="3" placeholder="Write a comment" required></textarea>
                 </fieldset>
                 <p class="text-xs-right">
                     <button type="submit" class="btn btn-primary">Comment</button>
