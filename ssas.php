@@ -15,6 +15,9 @@ class Ssas {
         self::$mysqli = new mysqli(self::$mysqlServer,self::$mysqlUser,self::$mysqlPass,self::$mysqlDb);
     }
 
+    // This function will authenticate a user based on the token cookie.
+    // returns true if the user is authenticated, otherwise return false
+    // if the token is invalid or has expired the method will call exit() and not return anything
     function authenticate(){
         if(isset($_COOKIE['token'])){
             try{
@@ -26,14 +29,35 @@ class Ssas {
 
                 //Extracts the user data from the token
                 self::$data = (array) $token['data'];
-                return true;
-            } catch (Exception $e){
+
+                //Check that the user acutally exists (could have been removed)
+                if($query = self::$mysqli -> prepare('SELECT id FROM user WHERE id = ? AND username = ?')){
+                    $query -> bind_param('is', self::getUid(), self::getUsername());
+                    $query -> execute();
+                    $query -> store_result();
+                    if($query -> num_rows == 1) return true;
+                }
+                
+                //If the query did not succeed, then there is something wrong!
+                throw new Exception('Authentication failed!');
+                                
+            } catch (Exception $e){ 
+
+                //This will happend if 
+                //  1) The token has expired 
+                //  2) The token is not valid
+                //  3) No user matching the user data exists
+
                 self::logout();
+                header("Location: index.php");
+                exit(); //Just to be sure
+                
             }
-            return false;
         }
+       return false; //Could not authenticate
     }
 
+    // This function will destroy the token cookie if it exists
     function logout(){
         if(isset($_COOKIE['token'])){
             unset($_COOKIE['token']);
@@ -41,21 +65,29 @@ class Ssas {
         }
     }
 
+    // This function will check if the user is logged in
+    // If the user is not authenticated, the the method will try to authenticate.
+    // returns true if the user is logged in otherwise false
     function isUserLoggedIn(){
         if(!isset(self::$data) && isset($_COOKIE['token'])) self::authenticate();
         return isset(self::$data);
     }
 
+    // This function will return to logged in users id (if authenticated)
     function &getUid(){
     if(self::isUserLoggedIn()) return self::$data['uid'];
     }
 
+    // This function will return to logged in users username (if authenticated)
     function &getUsername(){
-    if(self::isUserLoggedIn()) return $data['username'];
+    if(self::isUserLoggedIn()) return self::$data['username'];
     }
 
+    // This function will create a new user with the given username password combo
+    // returns true if the user was created, otherwise false
     function createUser($username, $password){
-
+        
+        //Sanitizing username variable
         $username = self::xssafe($username);
 
         //Generates salt
@@ -75,7 +107,13 @@ class Ssas {
         return false;
     }
 
+    // This function will login with the given username password combo
+    // returns true if the login was successful, otherwise false
     function login($username, $password){
+
+        //Sanitizing username variable
+        $username = self::xssafe($username);
+
         //Query to get the user salt
         if($query = self::$mysqli -> prepare('SELECT id,password FROM user WHERE username = ?')){
             $query -> bind_param('s', $username);
@@ -91,16 +129,17 @@ class Ssas {
 
         //If password and hash matches then we continue
         if(isset($hash) && password_verify($password,$hash)){
+
             //Generates random tokenid
+            //TODO Maybe store this in the database so tokens can be revoked? (if we do so, a user can only be loggedin at one pc at a time)
             $tokenId = base64_encode(mcrypt_create_iv(32,MCRYPT_DEV_URANDOM));
+
             $issuedAt = time(); //time of issue
             $notBefore = $issuedAt; //can be used to say that a token is not valid before a given time (not used)
-            $expire = $notBefore + 3600; //token expire data
-            //$serverName = $SERVER['SERVER_NAME'];
+            $expire = $notBefore + 3600 * 24 * 90; //token expires in 90 days
             $data = [
                 'iat' => $issuedAt,
                 'jti' => $tokenId,
-                //'iss' => $serverName,
                 'nbf' => $notBefore,
                 'exp' => $expire,
                 'data' => [
@@ -109,7 +148,7 @@ class Ssas {
                 ]
             ];
 
-            //Computes the encrypted token (TODO, maybe change mechanism to RSA?)
+            //Computes the encrypted token
             $jwt = JWT::encode($data,self::$key,'HS512');
 
             //Sets to cookie to never expire as the token itself contains the expiration date (Mimimum exposure)
@@ -120,7 +159,8 @@ class Ssas {
         return false;
     }
 
-
+    // This function uploads the given image
+    // returns true if the image was successfully uploaded, otherwise false
     function uploadImage($img){
         if(self::isUserLoggedIn()){
             if($query = self::$mysqli -> prepare('INSERT INTO image(owner_id, image) VALUES(?,?)')){
@@ -132,7 +172,13 @@ class Ssas {
         return false;
     }
 
-    function getUserId($username){
+    // This function will lookup a users id given the username
+    // returns the user id if exists, otherwise false
+    private function getUserId($username){
+        
+        //Sanitizing username variable
+        $username = self::xssafe($username);
+
         if($query = self::$mysqli -> prepare('SELECT id FROM user WHERE username = ?')){
             $query -> bind_param('s', $username);
             $query -> execute();
@@ -146,7 +192,13 @@ class Ssas {
         return false;
     }
 
+    // This function will remove sharing with the given user for the given image
+    // returns true if the operation was successful, otherwise false
     function removeShare($iid, $username){
+
+        //Sanitizing username variable
+        $username = self::xssafe($username);
+
         if(self::isUserLoggedIn() && self::isOwner($iid)){
             $uid = self::getUserId($username);
             if($uid == false) return false;
@@ -161,9 +213,15 @@ class Ssas {
         return false;
     }
 
+    // This function will share the given image with the given user
+    // returns true if the image was shared, otherwise false
     function shareImage($iid, $username)
     {
+
+        //Sanitizing username variable
         $username = self::xssafe($username);
+
+        //The user must be owner of the image to share it
         if(self::isUserLoggedIn() && self::isOwner($iid)){
 
             //Getting uid from username
@@ -180,6 +238,8 @@ class Ssas {
         }
     }
 
+    // This function returns a list of users whom the given image can be shared with
+    // returns a list of users if successful, otherwise false
     function getUsersToShareWith($iid){
         if(self::isUserLoggedIn() && self::isOwner($iid)){
             $users = array();
@@ -197,6 +257,8 @@ class Ssas {
         return false;
     }
 
+    // This function returns a list of users whom the given image is shared with.
+    // returns a list of users if successful, otherwise false
     function sharedWith($iid){
         if(self::isUserLoggedIn() && self::isOwner($iid)){
             $users = array();
@@ -214,6 +276,8 @@ class Ssas {
         return false;
     }
 
+    // This function returns a list of all images shared with the loggedin user
+    // returns a list of images if successful, otherwise false
     function getImages(){
         if(self::isUserLoggedIn()){
             $images = array();
@@ -231,6 +295,8 @@ class Ssas {
         return false;
     }
 
+    // This function returns the given image iff the loggedin user have access to it
+    // returns the image if successful, otherwise false
     function getImage($iid)
     {
         if(self::isUserLoggedIn())
@@ -250,6 +316,8 @@ class Ssas {
         return false;
     }
 
+    // This function will post given comment to given image iff the loggedin user has access to post
+    // returns true if successful, otherwise false
     function comment($iid, $comment)
     {
         $comment = self::xssafe($comment);
@@ -264,6 +332,8 @@ class Ssas {
         return false;
     }
 
+    // This function gets all comments for the given image
+    // returns a list of comments if successful, otherwise false
     function getComments($iid)
     {
         if(self::isUserLoggedIn() && self::verifyShare(self::getUid(), $iid))
@@ -285,6 +355,8 @@ class Ssas {
         return false;
     }
 
+    // This function checks if the loggedin user is owner of the given image
+    // returns true if the loggedin user is owner, otherwise false
     function isOwner($iid){
         if($query = self::$mysqli -> prepare('SELECT id FROM image WHERE owner_id = ? AND id = ?')){
             $query -> bind_param('ii', self::getUid(), $iid);
@@ -295,6 +367,8 @@ class Ssas {
         return false;
     }
 
+    // This function checks if the loggedin user is either owner or has access to the given image
+    // returns true if the loggedin user has access, otherwise false
     function verifyShare($uid, $iid)
     {
         if($query = self::$mysqli -> prepare('SELECT id FROM image LEFT JOIN shared_image ON image_id = id WHERE (user_id = ? OR owner_id = ?) AND id = ?')){
@@ -306,7 +380,8 @@ class Ssas {
         return false;
     }
 
-    function xssafe($data,$encoding='UTF-8')
+    // This function sanitized the input from JS code and others (prevents XSS)
+    private function xssafe($data,$encoding='UTF-8')
     {
        return htmlspecialchars($data,ENT_QUOTES | ENT_HTML401,$encoding);
     }
@@ -415,6 +490,5 @@ class Comment{
         if($seconds >= 0) return $seconds .' second';
         return "Error!";
     }
-
 }
 ?>
