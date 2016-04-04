@@ -14,6 +14,13 @@ if(!$ssas -> isUserLoggedIn()){
 //If a POST occured, try to authenticate
 if(isset($_FILES['image'])){
     $file_tmp= $_FILES['image']['name'];
+    //Check that the file is an image file.
+    if(!exif_imagetype ($file_tmp)){
+        header("Location: index.php");
+        echo "redirect!";
+        exit();
+    }
+    
     $type = pathinfo($file_tmp, PATHINFO_EXTENSION);
     $data = file_get_contents($file_tmp);
     $image = 'data:image/' . $type . ';base64,' . base64_encode($data);
