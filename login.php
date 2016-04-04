@@ -10,7 +10,7 @@ $ssas = new Ssas();
 //If a POST occured, try to authenticate
 if(isset($_POST['username']) && isset($_POST['password'])){
     $result = $ssas -> login($_POST['username'],$_POST['password']);
-    if($result) header("Location: login.php"); //Bugfix, otherwise the reditect to index is without cookies (for some reason!)
+    if($result === true) header("Location: login.php"); //Bugfix, otherwise the reditect to index is without cookies (for some reason!)
 }
 
 //If the user is already logged in, redirect to index.php
@@ -47,10 +47,10 @@ if($ssas -> isUserLoggedIn()){
             <button class="btn btn-success" type="submit">Login</button>
         </form>
 
-<?php if(isset($result) && !$result){ ?>
+<?php if(isset($result)){ ?>
         </br>
         <div class="alert alert-danger" role="alert">
-            <strong>Ups!</strong> Wrong username or password!
+        <strong>Ups!</strong> <?php echo $result; ?> 
         </div>
 <?php } ?>
 

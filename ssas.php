@@ -84,10 +84,15 @@ class Ssas {
     }
 
     // This function will create a new user with the given username password combo
-    // returns true if the user was created, otherwise false
+    // returns true if the user was created, otherwise error message
     function createUser($username, $password){
         
-        //Sanitizing username variable
+
+        if($username == "") return "username can't be empty";
+        if($password == "") return "password can't be empty";
+        if(preg_match('/^[a-zA-Z0-9-]+$/', $username) !== 1) return "username must contain letters, numbers and dash without space";
+
+        //Sanitizing username variable (just to be safe)
         $username = self::xssafe($username);
 
         //Generates salt
@@ -102,13 +107,14 @@ class Ssas {
             $query -> execute();
 
             //If exactly one row was affacted then we know that the user was inserted.
-            return $query -> affected_rows == 1;
+            if($query -> affected_rows == 1) return true;
+            return "username already exists";
         }
-        return false;
+        return "user could not be created";
     }
 
     // This function will login with the given username password combo
-    // returns true if the login was successful, otherwise false
+    // returns true if the login was successful, otherwise error message 
     function login($username, $password){
 
         //Sanitizing username variable
@@ -124,6 +130,8 @@ class Ssas {
             if($query -> num_rows > 0){
                 $query -> bind_result($uid, $hash);
                 $query -> fetch();
+            } else {
+                return "username and password does not match";
             }
         }
 
@@ -153,10 +161,10 @@ class Ssas {
 
             //Sets to cookie to never expire as the token itself contains the expiration date (Mimimum exposure)
             setcookie("token", $jwt, -1);
-
             return true;
-        }
-        return false;
+        } else return "username and password does not match";
+
+        return "could not login";
     }
 
     // This function uploads the given image

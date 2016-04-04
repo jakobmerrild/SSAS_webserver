@@ -10,9 +10,9 @@ $ssas = new Ssas();
 //If a POST occured, try to authenticate
 if(isset($_POST['username']) && isset($_POST['password'])){
     $result = $ssas -> createUser($_POST['username'],$_POST['password']);
-    if($result){
+    if($result === true){
         $result = $ssas -> login($_POST['username'],$_POST['password']);
-        if($result) header("Location: login.php"); //Bugfix, otherwise the reditect to index is without cookies (for some reason!)
+        if($result === true) header("Location: index.php");
     }
 }
 
@@ -49,10 +49,10 @@ if($ssas -> isUserLoggedIn()){
             <button type="submit" class="btn btn-success">Register</button>
         </form>
 
-<?php if(isset($result) && !$result){ ?>
+<?php if(isset($result)){ ?>
         </br>
         <div class="alert alert-danger" role="alert">
-            <strong>Ups!</strong> Username was not available!
+            <strong>Ups!</strong> <?php echo $result; ?>
         </div>
 <?php } ?>
 
