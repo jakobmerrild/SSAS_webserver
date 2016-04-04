@@ -56,6 +56,8 @@ class Ssas {
 
     function createUser($username, $password){
 
+        $username = self::xssafe($username);
+
         //Generates salt
         $salt = mcrypt_create_iv(22,MCRYPT_DEV_URANDOM);
 
@@ -161,6 +163,7 @@ class Ssas {
 
     function shareImage($iid, $username)
     {
+        $username = self::xssafe($username);
         if(self::isUserLoggedIn() && self::isOwner($iid)){
 
             //Getting uid from username
@@ -249,6 +252,7 @@ class Ssas {
 
     function comment($iid, $comment)
     {
+        $comment = self::xssafe($comment);
         if(self::isUserLoggedIn() && self::verifyShare(self::getUid(), $iid))
         {
             if($query = self::$mysqli -> prepare('INSERT INTO post(text, user_id, image_id) VALUES (?,?,?)')){
@@ -300,6 +304,11 @@ class Ssas {
             return $query -> num_rows > 0;
         }
         return false;
+    }
+
+    function xssafe($data,$encoding='UTF-8')
+    {
+       return htmlspecialchars($data,ENT_QUOTES | ENT_HTML401,$encoding);
     }
 }
 
