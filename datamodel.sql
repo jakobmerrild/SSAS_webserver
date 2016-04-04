@@ -14,7 +14,8 @@ CREATE TABLE image(
     owner_id INT NOT NULL,
     image MEDIUMTEXT NOT NULL,
     createdDate DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (id)
+    PRIMARY KEY (id),
+    FOREIGN KEY fk_owner (owner_id) REFERENCES user(id) ON DELETE CASCADE
 ) engine='innodb';
 
 CREATE TABLE shared_image(
